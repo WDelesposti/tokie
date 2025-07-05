@@ -1,4 +1,10 @@
-import { countTokens, saveTokenUsage, TokenUsage } from "./tokeUsage";
+import {
+  countTokens,
+  saveTokenUsage,
+  TokenUsage,
+  getChatGPTSessionId,
+  loadTokenUsage,
+} from "./tokeUsage";
 import { updateWidgetUI } from "./ui";
 
 function setupPlanObserver(usage: TokenUsage, widget: HTMLElement) {
@@ -171,3 +177,49 @@ export const startMessageObserver = (
     log("[Observer] Chat root not found!");
   }
 };
+
+export function resetTokenCount(usage: TokenUsage): void {
+  usage.inputTokens = 0;
+  usage.outputTokens = 0;
+  usage.totalTokens = 0;
+}
+
+function observeTitleChanges(callback: (title: string) => void) {
+  const titleElement = document.querySelector("title");
+  if (titleElement) {
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "childList" &&
+          mutation.target.nodeName === "TITLE"
+        ) {
+          callback(document.title);
+        }
+      });
+    });
+    observer.observe(titleElement, { childList: true });
+  }
+}
+
+export function setupSessionObserver(
+  initialUsage: TokenUsage,
+  widget: HTMLElement
+) {
+  let currentUsage = initialUsage;
+
+  const handleSessionChange = async () => {
+    const sessionId = getChatGPTSessionId();
+    if (sessionId && sessionId !== currentUsage.sessionId) {
+      console.log(`[Observer] Session changed to ${sessionId}`);
+      currentUsage = await loadTokenUsage(sessionId);
+      resetTokenCount(currentUsage);
+      updateWidgetUI(currentUsage, widget);
+    }
+  };
+
+  // Observe URL changes for session switching
+  observeTitleChanges(handleSessionChange);
+
+  // Initial check in case the content script loads after the page is already on a session.
+  handleSessionChange();
+}

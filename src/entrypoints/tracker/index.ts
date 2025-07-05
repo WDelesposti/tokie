@@ -1,43 +1,7 @@
 import { loadTokenUsage, DEFAULT_USAGE, TokenUsage } from "./tokeUsage";
 import { createWidget } from "./ui";
 import { getChatGPTSessionId } from "./tokeUsage";
-import { startMessageObserver } from "./observer";
-
-function waitForFirstUserInput(): Promise<HTMLElement> {
-  return new Promise((resolve) => {
-    const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        const elements = Array.from(
-          (mutation.target as HTMLElement).querySelectorAll(
-            '[data-message-author-role="user"]'
-          )
-        );
-
-        for (const el of elements) {
-          if (el.textContent?.trim()) {
-            observer.disconnect();
-            resolve(el as HTMLElement);
-            return;
-          }
-        }
-      }
-    });
-
-    observer.observe(document.body, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
-
-    const existing = document.querySelector(
-      '[data-message-author-role="user"]'
-    );
-    if (existing) {
-      observer.disconnect();
-      resolve(existing as HTMLElement);
-    }
-  });
-}
+import { startMessageObserver, setupSessionObserver } from "./observer";
 
 async function initTokenTracker() {
   const sessionId = getChatGPTSessionId() || `session-${Date.now()}`;
@@ -51,10 +15,11 @@ async function initTokenTracker() {
       sessionStart: Date.now(),
     };
   }
+
   console.log("[tracker] Token usage loaded:", usage);
   const widget = createWidget(usage);
   startMessageObserver(usage, widget);
-  await waitForFirstUserInput();
+  setupSessionObserver(usage, widget);
 }
 
 export default initTokenTracker;
