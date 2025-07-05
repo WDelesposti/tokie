@@ -219,7 +219,4 @@ export function setupSessionObserver(
 
   // Observe URL changes for session switching
   observeTitleChanges(handleSessionChange);
-
-  // Initial check in case the content script loads after the page is already on a session.
-  handleSessionChange();
 }
