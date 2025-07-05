@@ -1,7 +1,7 @@
 import { loadTokenUsage, DEFAULT_USAGE } from "./tokeUsage";
 import { createWidget } from "./ui";
 import { getChatGPTSessionId } from "./tokeUsage";
-import { setupObservers, resetTokenCount } from "./observer";
+import { setupObservers } from "./observer";
 
 async function initTokenTracker() {
   const sessionId = getChatGPTSessionId() || `session-${Date.now()}`;
@@ -14,9 +14,6 @@ async function initTokenTracker() {
       sessionId,
       sessionStart: Date.now(),
     };
-  } else {
-    // Reset token count on session reload/refresh
-    resetTokenCount(usage);
   }
 
   console.log("[tracker] Token usage loaded:", usage);

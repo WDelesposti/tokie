@@ -32,6 +32,9 @@ export function resetTokenCount(usage: TokenUsage): void {
 
 // This function will be called when the chat has settled
 function onChatSettled(usage: TokenUsage, widget: HTMLElement) {
+  usage.inputTokens = 0;
+  usage.outputTokens = 0;
+
   const allArticles = document.querySelectorAll("article");
   allArticles.forEach((article) => {
     const userBlock = article.querySelector(
@@ -152,7 +155,6 @@ export function setupObservers(initialUsage: TokenUsage, widget: HTMLElement) {
     if (sessionId && sessionId !== currentUsage.sessionId) {
       log(`[Observer] Session changed to ${sessionId}`);
       currentUsage = await loadTokenUsage(sessionId);
-      resetTokenCount(currentUsage);
       updateWidgetUI(currentUsage, widget);
       settled = false; // Reset settled state for the new session
     }
