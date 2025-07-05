@@ -30,8 +30,34 @@ export function resetTokenCount(usage: TokenUsage): void {
   usage.totalTokens = 0;
 }
 
+// This function will be called when the chat has settled
+function onChatSettled(usage: TokenUsage, widget: HTMLElement) {
+  const allArticles = document.querySelectorAll("article");
+  allArticles.forEach((article) => {
+    const userBlock = article.querySelector(
+      'div[data-message-author-role="user"]'
+    );
+    if (userBlock) {
+      const userText = (userBlock as HTMLElement).innerText.trim();
+      usage.inputTokens += countTokens(userText);
+    }
+
+    const assistantBlock = article.querySelector(
+      'div[data-message-author-role="assistant"]'
+    );
+    if (assistantBlock) {
+      const assistantText = (assistantBlock as HTMLElement).innerText.trim();
+      usage.outputTokens += countTokens(assistantText);
+    }
+  });
+
+  usage.totalTokens = usage.inputTokens + usage.outputTokens;
+  updateWidgetUI(usage, widget);
+}
+
 export function setupObservers(initialUsage: TokenUsage, widget: HTMLElement) {
   let currentUsage = initialUsage;
+  let settled = false;
 
   const log = console.log;
   let buffer = "";
@@ -97,10 +123,25 @@ export function setupObservers(initialUsage: TokenUsage, widget: HTMLElement) {
 
   const chatRoot = document.querySelector("main");
   if (chatRoot) {
-    mutationObserver.observe(chatRoot, {
+    const settleObserver = new MutationObserver(() => {
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          onChatSettled(currentUsage, widget);
+          // Start observing for new messages after the chat has settled
+          mutationObserver.observe(chatRoot, {
+            childList: true,
+            subtree: true,
+            characterData: true,
+          });
+        }
+      }, 1000);
+    });
+
+    settleObserver.observe(chatRoot, {
       childList: true,
       subtree: true,
-      characterData: true,
     });
   } else {
     log("[Observer] Chat root not found!");
@@ -113,6 +154,7 @@ export function setupObservers(initialUsage: TokenUsage, widget: HTMLElement) {
       currentUsage = await loadTokenUsage(sessionId);
       resetTokenCount(currentUsage);
       updateWidgetUI(currentUsage, widget);
+      settled = false; // Reset settled state for the new session
     }
   };
 
